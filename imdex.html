@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Economy Matching Game</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f0e6; /* beige */
+    margin: 0; padding: 20px;
+    color: #4b3b00;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  header {
+    font-size: 2.5em;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #bfa758;
+    text-shadow: 1px 1px 2px #7a6b1d;
+  }
+  #gameBoard {
+    width: 660px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    grid-gap: 15px;
+  }
+  .card {
+    background-color: #fff8e1;
+    border: 3px solid #bfa758;
+    border-radius: 12px;
+    height: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1em;
+    padding: 10px;
+    text-align: center;
+    user-select: none;
+    box-shadow: 0 4px 8px rgba(191, 167, 88, 0.4);
+    transition: background-color 0.3s ease;
+  }
+  .card.flipped {
+    background-color: #d4c494;
+    cursor: default;
+    color: #4b3b00;
+  }
+  .card.matched {
+    background-color: #a18f3e;
+    color: #fff;
+    cursor: default;
+    box-shadow: 0 0 15px 4px #7a6b1d;
+  }
+  #stats {
+    margin-top: 15px;
+    font-size: 1.2em;
+  }
+  #message {
+    margin-top: 10px;
+    font-weight: 700;
+    color: #bfa758;
+  }
+  button {
+    margin-top: 20px;
+    background-color: #bfa758;
+    border: none;
+    padding: 10px 25px;
+    font-size: 1.2em;
+    color: #fff;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+  }
+  button:hover {
+    background-color: #a18f3e;
+  }
+</style>
+</head>
+<body>
+<header>Economy Matching Game</header>
+
+<div id="gameBoard"></div>
+
+<div id="stats">
+  Moves: <span id="moves">0</span> | Time: <span id="time">0</span> sec
+</div>
+<div id="message"></div>
+
+<button id="restartBtn">Restart Game</button>
+
+<script>
+  const gameBoard = document.getElementById('gameBoard');
+  const movesEl = document.getElementById('moves');
+  const timeEl = document.getElementById('time');
+  const messageEl = document.getElementById('message');
+  const restartBtn = document.getElementById('restartBtn');
+
+  const pairs = [
+    {term: "Inflation", definition: "Rise in prices over time"},
+    {term: "Trade Balance", definition: "Difference between exports and imports"},
+    {term: "Debt", definition: "Money owed by a country"},
+    {term: "GDP Growth", definition: "Increase in economic output"},
+    {term: "Fiscal Policy", definition: "Government spending and taxation"},
+    {term: "Monetary Policy", definition: "Central bank actions to control money supply"},
+  ];
+
+  let cards = [];
+  let flippedCards = [];
+  let matchedCount = 0;
+  let moves = 0;
+  let time = 0;
+  let timerInterval;
+
+  // Initialize game
+  function initGame() {
+    cards = [];
+    matchedCount = 0;
+    moves = 0;
+    time = 0;
+    movesEl.textContent = moves;
+    timeEl.textContent = time;
+    messageEl.textContent = '';
+    clearInterval(timerInterval);
+
+    // Create card objects (term + definition)
+    pairs.forEach(pair => {
+      cards.push({id: pair.term, text: pair.term, type: 'term'});
+      cards.push({id: pair.term, text: pair.definition, type: 'def'});
+    });
+
+    shuffle(cards);
+
+    renderBoard();
+    timerInterval = setInterval(() => {
+      time++;
+      timeEl.textContent = time;
+    }, 1000);
+  }
+
+  // Shuffle function (Fisher-Yates)
+  function shuffle(array) {
+    for(let i = array.length -1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+
+  // Render cards to board
+  function renderBoard() {
+    gameBoard.innerHTML = '';
+    cards.forEach((card, index) => {
+      const cardEl = document.createElement('div');
+      cardEl.classList.add('card');
+      cardEl.dataset.id = card.id;
+      cardEl.dataset.type = card.type;
+      cardEl.dataset.index = index;
+      cardEl.textContent = '';
+      cardEl.addEventListener('click', () => flipCard(cardEl));
+      gameBoard.appendChild(cardEl);
+    });
+  }
+
+  // Flip card logic
+  function flipCard(cardEl) {
+    if(flippedCards.length >= 2 || cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) {
+      return;
+    }
+
+    cardEl.classList.add('flipped');
+    cardEl.textContent = cards[cardEl.dataset.index].text;
+    flippedCards.push(cardEl);
+
+    if(flippedCards.length === 2) {
+      moves++;
+      movesEl.textContent = moves;
+      checkMatch();
+    }
+  }
+
+  // Check if two flipped cards match
+  function checkMatch() {
+    const [card1, card2] = flippedCards;
+    if(card1.dataset.id === card2.dataset.id && card1.dataset.type !== card2.dataset.type) {
+      // Match found
+      card1.classList.add('matched');
+      card2.classList.add('matched');
+      matchedCount++;
+      messageEl.textContent = "Great! You found a match.";
+      flippedCards = [];
+
+      if(matchedCount === pairs.length) {
+        clearInterval(timerInterval);
+        messageEl.textContent = `You matched all pairs in ${moves} moves and ${time} seconds! 🎉`;
+      }
+    } else {
+      // No match - flip back after short delay
+      messageEl.textContent = "Try again!";
+      setTimeout(() => {
+        card1.classList.remove('flipped');
+        card2.classList.remove('flipped');
+        card1.textContent = '';
+        card2.textContent = '';
+        flippedCards = [];
+        messageEl.textContent = '';
+      }, 1000);
+    }
+  }
+
+  restartBtn.addEventListener('click', initGame);
+
+  // Start game on load
+  window.onload = initGame;
+</script>
+</body>
+</html>
